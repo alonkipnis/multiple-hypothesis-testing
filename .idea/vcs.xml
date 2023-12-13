@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/HCtest" vcs="" />
+    <mapping directory="$PROJECT_DIR$/src/HCtest" vcs="" />
+    <mapping directory="$PROJECT_DIR$/src/higher-criticism-test" vcs="" />
+    <mapping directory="$PROJECT_DIR$/src/multitest" vcs="" />
+  </component>
+</project>

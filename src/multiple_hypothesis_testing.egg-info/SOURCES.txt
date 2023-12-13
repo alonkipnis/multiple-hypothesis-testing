@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+src/multiple_hypothesis_testing.egg-info/PKG-INFO
+src/multiple_hypothesis_testing.egg-info/SOURCES.txt
+src/multiple_hypothesis_testing.egg-info/dependency_links.txt
+src/multiple_hypothesis_testing.egg-info/requires.txt
+src/multiple_hypothesis_testing.egg-info/top_level.txt
+src/multitest/MultiTest.py
+src/multitest/__init__.py
