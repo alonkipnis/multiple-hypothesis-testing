@@ -2,12 +2,17 @@ import numpy as np
 from scipy.stats import beta, chi2
 from matplotlib import pyplot as plt
 
-MIN_PVAL = 1e-20
-
 
 class MultiTest(object):
     """
-    Higher Criticism test 
+    Mulitple testing class for P-values with a focus on tests for rare and weak effects.
+    The package implemnents the following tests:
+    - Higher criticism [1] and varaints from [2] and [3], including HC threshold from [2]
+    - Berk-Jones [4]
+    - Fisher's method
+    - Bonferroni type inference
+    - Family-wise significant testing using FDR control
+    - P-value selection using Benjamini-Hochberg's FDR control
 
     References:
     [1] Donoho, D. L. and Jin, J.,
@@ -16,29 +21,26 @@ class MultiTest(object):
     [2] Donoho, D. L. and Jin, J. "Higher critcism thresholding: Optimal 
     feature selection when useful features are rare and weak", proceedings
     of the national academy of sciences, 2008.
+    [3] Jiashun Jin and Wanjie Wang, "Influential features PCA for
+                 high dimensional clustering"
+    [4] Amit Moscovich, Boaz Nadler, and Clifford Spiegelman. "On the exact Berk-Jones statistics
+      and their p-value calculation." Electronic Journal of Statistics. 10 (2016): 2329-2354.
+
     ========================================================================
 
     Args:
     -----
         pvals    list of p-values. P-values that are np.nan are exluded.
         stbl     normalize by expected P-values (stbl=True) or observed
-                 P-values (stbl=False). stbl=True was suggested in [2].
-                 stbl=False in [1].
-        gamma    lower fruction of p-values to use.
+                 P-values (stbl=False). stbl=True was suggested in [2] while 
+                 [1] studied the case stbl=False. 
         
     Methods :
     -------
-        hc       HC and P-value attaining it
-        hc_star  more stable version of HC (HCdagger in [1])
-        hc_jin   a version of HC from 
-                [2] Jiashun Jin and Wanjie Wang, "Influential features PCA for
-                 high dimensional clustering"
-
-    Todo:
-      Implement Feature selection procedures: HC-thresholding, FDR, BJ, Sims
-      The idea is to return a mask based on the P-values
-      Perhaps implement it in a different module dedicated to feature selection?
-
+        hc       HC and P-value attaining it 
+        hc_star  Only consider P-values larger than 1/n. (HCdagger in [1]) 
+        hc_jin   Only consider P-values larger than log(n)/n. This variant was introduced in [3]
+        berk_jones  Exact Berk-Jones statistic (see [4])
     """
 
     def __init__(self, pvals, stbl=True):
@@ -46,10 +48,10 @@ class MultiTest(object):
         self._N = len(pvals)
         assert (self._N > 0)
 
-        self._EPS = 1 / (1e2 + self._N ** 2)
+        self._EPS = 1 / (1e4 + self._N ** 2)
         self._istar = 1
 
-        self._pvals = np.sort(np.asarray(pvals.copy()))
+        self._pvals = np.sort(np.asarray(pvals.copy()))  # sorted P-values
         self._uu = np.linspace(1 / self._N, 1, self._N)
         self._uu[-1] -= self._EPS # we assume that the largest P-value
                                   # has no effect on the results
@@ -64,9 +66,10 @@ class MultiTest(object):
         self._imin_jin = np.argmax(self._pvals > np.log(self._N) / self._N)
 
         self._gamma = np.log(self._N) / np.sqrt(self._N)  # for 'auto' setting
-                            # this gamma may be too small when N is large
+                            # this gamma was suggested in [3]
+                            # The rationalle is that HC is not useful for signal denser than 1/sqrt(n)
 
-    def _calculate_hc(self, imin, imax):
+    def _evaluate_hc(self, imin, imax):
         if imin > imax:
             return np.nan
         if imin == imax:
@@ -78,7 +81,9 @@ class MultiTest(object):
 
     def hc(self, gamma='auto'):
         """
-        Higher Criticism test statistic
+        Higher Criticism test but only consider P-values larger than log(n)/n. 
+        This variant was introduced in [3]
+
 
         Args:
         -----
@@ -93,10 +98,11 @@ class MultiTest(object):
         if gamma == 'auto': 
             gamma = self._gamma
         imax = np.maximum(imin, int(gamma * self._N + 0.5))
-        return self._calculate_hc(imin, imax)
+        return self._evaluate_hc(imin, imax)
 
     def hc_jin(self, gamma='auto'):
-        """sample-adjusted higher criticism score from [2]
+        """
+        Higher criticism test wi
 
         Args:
         -----
@@ -112,9 +118,9 @@ class MultiTest(object):
             gamma = self._gamma
         imin = self._imin_jin
         imax = np.maximum(imin + 1, int(np.floor(gamma * self._N + 0.5)))
-        return self._calculate_hc(imin, imax)
+        return self._evaluate_hc(imin, imax)
 
-    def berk_jones(self, gamma=.45):
+    def berk_jones(self, gamma='auto'):
         """
         Exact Berk-Jones statistic
 
@@ -137,6 +143,9 @@ class MultiTest(object):
 
         if N == 0:
             return np.nan, np.nan
+        
+        if gamma == 'auto': 
+            gamma = self._gamma
 
         max_i = max(1, int(gamma * N))
 
@@ -150,7 +159,46 @@ class MultiTest(object):
             Mminus = np.min(1 - BJpv)
             bj = np.minimum(Mplus, Mminus)
 
-        return -np.log(np.maximum(bj, MIN_PVAL))
+        return -np.log(np.maximum(bj))
+    
+    def berk_jones_plus(self, gamma=.45):
+        """
+        Exact Berk-Jones statistic
+
+        According to Moscovich, Nadler, Spiegelman. (2013). 
+        On the exact Berk-Jones statistics and their p-value calculation
+
+        Args:
+        -----
+        gamma  lower fraction of P-values to consider. Better to pick
+               gamma < .5 or far below 1 to avoid p-values that are one
+
+        Return:
+        -------
+        -log(BJ) score (large values are significant) 
+        (has a scaled chisquared distribution under the null)
+
+        """
+
+        N = self._N
+
+        if N == 0:
+            return np.nan, np.nan
+        
+        if gamma == 'auto': 
+            gamma = self._gamma
+
+        max_i = max(1, int(gamma * N))
+
+        spv = self._pvals[:max_i]
+        ii = np.arange(1, max_i + 1)
+
+        bj = spv[0]
+        if len(spv) >= 1:
+            BJpv = beta.cdf(spv, ii, N - ii + 1)
+            Mplus = np.min(BJpv)
+            
+        return -np.log(Mplus)
 
     def hc_star(self, gamma='auto'):
         """sample-adjusted higher criticism score
@@ -161,16 +209,15 @@ class MultiTest(object):
 
         Returns:
         -------
-        :HC_score:
-        :P-value attaining it:
+        HC score
+        P-value attaining it
 
         """
         if gamma == 'auto': 
             gamma = self._gamma
         imin = self._imin_star
-        imax = np.maximum(imin + 1,
-                          int(np.floor(gamma * self._N + 0.5)))
-        return self._calculate_hc(imin, imax)
+        imax = np.maximum(imin + 1, int(np.floor(gamma * self._N + 0.5)))
+        return self._evaluate_hc(imin, imax)
 
     def hc_dashboard(self, gamma='auto'):
         """
@@ -252,22 +299,39 @@ class MultiTest(object):
         """
         Bonferroni type inference
 
+        Returns:
         -log(minimal P-value)
         """
-        return -np.log(np.maximum(self._pvals[0], MIN_PVAL))
+        return -np.log(np.maximum(self._pvals[0]))
 
     def fdr(self):
         """
         Maximal False-discovery rate functional 
 
         Returns:
-            :corrected critical P-value:
-            :critical P-value:
+            corrected critical P-value
+            critical P-value
         """
 
         vals = self._pvals / self._uu
         istar = np.argmin(vals)
-        return -np.log(np.maximum(vals[istar], MIN_PVAL)), self._pvals[istar]
+        return -np.log(np.maximum(vals[istar])), self._pvals[istar]
+
+    def fdr_BH(self, fdr_param=0.05):
+        """
+        Binjimini-Hochberg FDR control
+
+        Returns:
+            P-value p(i^*) such that the the proportion of false discoveries in {p(i) <= p(i^*)} is 
+            samller in expectation than fdr_param
+        """
+
+        vals = self._pvals / self._uu
+        indicator = vals < fdr_param / self._N # example 0 0 0 1 1 1 1 1 1
+        istar = np.argmax(indicator)-1           # first 1
+        if istar < 0:
+            return np.nan
+        return self._pvals[istar]
 
     def fisher(self):
         """
@@ -280,10 +344,10 @@ class MultiTest(object):
         When pvals are uniform Fs ~ chi^2 with 2*len(pvals) degrees of freedom
 
         Returns:
-            Fs:       Fisher's method statistics
-            Fs_pval:  P-value of the assocaited chi-squared test
+            fisher_comb_stat       Fisher's method statistics
+            chi2_pval              P-value of the assocaited chi-squared test
         """
 
-        Fs = np.sum(-2 * np.log(np.maximum(self._pvals, MIN_PVAL)))
-        chi2_pval = chi2.sf(Fs, df=2 * len(self._pvals))
-        return Fs, chi2_pval
+        fisher_comb_stat = np.sum(-2 * np.log(np.maximum(self._pvals)))
+        chi2_pval = chi2.sf(fisher_comb_stat, df=2 * len(self._pvals))
+        return fisher_comb_stat, chi2_pval
