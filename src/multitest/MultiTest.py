@@ -159,9 +159,52 @@ class MultiTest(object):
             Mminus = np.min(1 - BJpv)
             bj = np.minimum(Mplus, Mminus)
 
-        return -np.log(np.maximum(bj))
+        return -np.log(bj)
     
-    def berk_jones_plus(self, gamma=.45):
+    def berk_jones_feature_selection(self, gamma='auto'):
+        """
+        Exact Berk-Jones statistic
+
+        According to Moscovich, Nadler, Spiegelman. (2013). 
+        On the exact Berk-Jones statistics and their p-value calculation
+
+        Args:
+        -----
+        gamma  lower fraction of P-values to consider. Better to pick
+               gamma < .5 or far below 1 to avoid p-values that are one
+
+        Return:
+        -------
+        -log(BJ) score (large values are significant) 
+        (has a scaled chisquared distribution under the null)
+
+        """
+
+        N = self._N
+
+        if N == 0:
+            return np.nan, np.nan
+        
+        if gamma == 'auto': 
+            gamma = self._gamma
+
+        max_i = max(1, int(gamma * N))
+
+        spv = self._pvals[:max_i]
+        ii = np.arange(1, max_i + 1)
+
+        istar = 0
+        bj = spv[0]
+        if len(spv) >= 1:
+            BJpv = beta.cdf(spv, ii, N - ii + 1)
+            istar = np.argmin(NJpv)
+            Mplus = BJpv[istar]
+            #Mminus = np.min(1 - BJpv)
+            #bj = np.minimum(Mplus, Mminus)
+            bj = Mplus
+        return spv[istar]  # P-value attaining the minimum in Mplus
+
+    def berk_jones_plus(self, gamma='auto'):
         """
         Exact Berk-Jones statistic
 
@@ -302,7 +345,7 @@ class MultiTest(object):
         Returns:
         -log(minimal P-value)
         """
-        return -np.log(np.maximum(self._pvals[0]))
+        return -np.log(self._pvals[0])
 
     def fdr(self):
         """
@@ -315,7 +358,7 @@ class MultiTest(object):
 
         vals = self._pvals / self._uu
         istar = np.argmin(vals)
-        return -np.log(np.maximum(vals[istar])), self._pvals[istar]
+        return -np.log(vals[istar]), self._pvals[istar]
 
     def fdr_BH(self, fdr_param=0.05):
         """
@@ -348,6 +391,6 @@ class MultiTest(object):
             chi2_pval              P-value of the assocaited chi-squared test
         """
 
-        fisher_comb_stat = np.sum(-2 * np.log(np.maximum(self._pvals)))
+        fisher_comb_stat = np.sum(-2 * np.log(self._pvals))
         chi2_pval = chi2.sf(fisher_comb_stat, df=2 * len(self._pvals))
         return fisher_comb_stat, chi2_pval
