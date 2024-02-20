@@ -338,7 +338,7 @@ class MultiTest(object):
         Maximal False-discovery rate functional 
 
         Returns:
-            corrected critical P-value
+            -log(p(i^*)), p(i^*) where i^* is the index of the
             critical P-value
         """
 
@@ -349,6 +349,9 @@ class MultiTest(object):
     def fdr_control(self, fdr_param=0.1):
         """
         Binjimini-Hochberg FDR control
+
+        Args:
+            fdr_param: False discovery rate parameter
 
         Returns:
             P-value p(i^*) such that the the proportion of false discoveries in {p(i) <= p(i^*)} is 
