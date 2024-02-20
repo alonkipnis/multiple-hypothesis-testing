@@ -40,7 +40,7 @@ class MultiTest(object):
         hc       HC and P-value attaining it 
         hc_star  Only consider P-values larger than 1/n. (HCdagger in [1]) 
         hc_jin   Only consider P-values larger than log(n)/n. This variant was introduced in [3]
-        berk_jones  Exact Berk-Jones statistic (see [4])
+        berkjones  Exact Berk-Jones statistic (see [4])
     """
 
     def __init__(self, pvals, stbl=True):
@@ -51,19 +51,19 @@ class MultiTest(object):
         self._EPS = 1 / (1e4 + self._N ** 2)
         self._istar = 1
 
-        self._pvals = np.sort(np.asarray(pvals.copy()))  # sorted P-values
+        self._sorted_pvals = np.sort(np.asarray(pvals.copy()))  # sorted P-values
         self._uu = np.linspace(1 / self._N, 1, self._N)
         self._uu[-1] -= self._EPS # we assume that the largest P-value
                                   # has no effect on the results
         if stbl:
             denom = np.sqrt(self._uu * (1 - self._uu))
         else:
-            denom = np.sqrt(self._pvals * (1 - self._pvals))
+            denom = np.sqrt(self._sorted_pvals * (1 - self._sorted_pvals))
 
-        self._zz = np.sqrt(self._N) * (self._uu - self._pvals) / denom
+        self._zz = np.sqrt(self._N) * (self._uu - self._sorted_pvals) / denom
 
-        self._imin_star = np.argmax(self._pvals > (1 - self._EPS) / self._N)
-        self._imin_jin = np.argmax(self._pvals > np.log(self._N) / self._N)
+        self._imin_star = np.argmax(self._sorted_pvals > (1 - self._EPS) / self._N)
+        self._imin_jin = np.argmax(self._sorted_pvals > np.log(self._N) / self._N)
 
         self._gamma = np.log(self._N) / np.sqrt(self._N)  # for 'auto' setting
                             # this gamma was suggested in [3]
@@ -77,13 +77,11 @@ class MultiTest(object):
         else:
             self._istar = np.argmax(self._zz[imin:imax]) + imin
         zMaxStar = self._zz[self._istar]
-        return zMaxStar, self._pvals[self._istar]
+        return zMaxStar, self._sorted_pvals[self._istar]
 
     def hc(self, gamma='auto'):
         """
-        Higher Criticism test but only consider P-values larger than log(n)/n. 
-        This variant was introduced in [3]
-
+        Higher Criticism test of [1]
 
         Args:
         -----
@@ -102,7 +100,8 @@ class MultiTest(object):
 
     def hc_jin(self, gamma='auto'):
         """
-        Higher criticism test wi
+        but only consider P-values larger than log(n)/n. 
+        This variant was introduced in [3]/ 
 
         Args:
         -----
@@ -111,7 +110,6 @@ class MultiTest(object):
         Return:
         -------
         HC score, P-value attaining it
-
         """
 
         if gamma == 'auto': 
@@ -120,7 +118,7 @@ class MultiTest(object):
         imax = np.maximum(imin + 1, int(np.floor(gamma * self._N + 0.5)))
         return self._evaluate_hc(imin, imax)
 
-    def berk_jones(self, gamma='auto'):
+    def berkjones(self, gamma='auto', min_only=False):
         """
         Exact Berk-Jones statistic
 
@@ -129,8 +127,7 @@ class MultiTest(object):
 
         Args:
         -----
-        gamma  lower fraction of P-values to consider. Better to pick
-               gamma < .5 or far below 1 to avoid p-values that are one
+        gamma  lower fraction of P-values to consider. 
 
         Return:
         -------
@@ -140,7 +137,6 @@ class MultiTest(object):
         """
 
         N = self._N
-
         if N == 0:
             return np.nan, np.nan
         
@@ -149,7 +145,7 @@ class MultiTest(object):
 
         max_i = max(1, int(gamma * N))
 
-        spv = self._pvals[:max_i]
+        spv = self._sorted_pvals[:max_i]
         ii = np.arange(1, max_i + 1)
 
         bj = spv[0]
@@ -157,11 +153,13 @@ class MultiTest(object):
             BJpv = beta.cdf(spv, ii, N - ii + 1)
             Mplus = np.min(BJpv)
             Mminus = np.min(1 - BJpv)
-            bj = np.minimum(Mplus, Mminus)
-
+            if min_only: #only use BJ+ for the score
+                bj = Mplus 
+            else:
+                bj = np.minimum(Mplus, Mminus) 
         return -np.log(bj)
     
-    def berk_jones_feature_selection(self, gamma='auto'):
+    def berkjones_plus(self, gamma='auto'):
         """
         Exact Berk-Jones statistic
 
@@ -190,58 +188,46 @@ class MultiTest(object):
 
         max_i = max(1, int(gamma * N))
 
-        spv = self._pvals[:max_i]
+        spv = self._sorted_pvals[:max_i]
         ii = np.arange(1, max_i + 1)
 
-        istar = 0
-        bj = spv[0]
-        if len(spv) >= 1:
-            BJpv = beta.cdf(spv, ii, N - ii + 1)
-            istar = np.argmin(NJpv)
-            Mplus = BJpv[istar]
-            #Mminus = np.min(1 - BJpv)
-            #bj = np.minimum(Mplus, Mminus)
-            bj = Mplus
-        return spv[istar]  # P-value attaining the minimum in Mplus
-
-    def berk_jones_plus(self, gamma='auto'):
-        """
-        Exact Berk-Jones statistic
-
-        According to Moscovich, Nadler, Spiegelman. (2013). 
-        On the exact Berk-Jones statistics and their p-value calculation
-
-        Args:
-        -----
-        gamma  lower fraction of P-values to consider. Better to pick
-               gamma < .5 or far below 1 to avoid p-values that are one
-
-        Return:
-        -------
-        -log(BJ) score (large values are significant) 
-        (has a scaled chisquared distribution under the null)
-
-        """
-
-        N = self._N
-
-        if N == 0:
-            return np.nan, np.nan
-        
-        if gamma == 'auto': 
-            gamma = self._gamma
-
-        max_i = max(1, int(gamma * N))
-
-        spv = self._pvals[:max_i]
-        ii = np.arange(1, max_i + 1)
-
-        bj = spv[0]
+        Mplus = spv[0]
         if len(spv) >= 1:
             BJpv = beta.cdf(spv, ii, N - ii + 1)
             Mplus = np.min(BJpv)
             
         return -np.log(Mplus)
+
+    def berkjones_threshold(self, gamma='auto'):
+        """
+        Use the Berk-Jones statistic to find a threshold for P-values in 
+        a manner analogous to the HC threshold of [2]
+
+        Args:
+        -----
+        gamma  lower fraction of P-values to consider
+
+        Return:
+        -------
+        P-value attaining the minimum in Mplus
+        """
+
+        N = self._N
+        if N == 0:
+            return np.nan, np.nan
+        
+        if gamma == 'auto': 
+            gamma = self._gamma
+
+        max_i = max(1, int(gamma * N))
+        spv = self._sorted_pvals[:max_i]
+        ii = np.arange(1, max_i + 1)
+
+        istar = 0
+        if len(spv) >= 1:
+            BJpv = beta.cdf(spv, ii, N - ii + 1)
+            istar = np.argmin(BJpv)
+        return spv[istar]  # P-value attaining the minimum in Mplus
 
     def hc_star(self, gamma='auto'):
         """sample-adjusted higher criticism score
@@ -283,7 +269,7 @@ class MultiTest(object):
 
         imax = np.maximum(imin, int(gamma * N + 0.5))
 
-        yy = np.sort(self._pvals)[imin:imax]
+        yy = np.sort(self._sorted_pvals)[imin:imax]
         zz = self._zz[imin:imax]
         xx = self._uu[imin:imax]
 
@@ -331,7 +317,7 @@ class MultiTest(object):
         return fig
 
     def get_state(self):
-        return {'pvals': self._pvals,
+        return {'pvals': self._sorted_pvals,
                 'u': self._uu,
                 'z': self._zz,
                 'imin_star': self._imin_star,
@@ -345,7 +331,7 @@ class MultiTest(object):
         Returns:
         -log(minimal P-value)
         """
-        return -np.log(self._pvals[0])
+        return -np.log(self._sorted_pvals[0])
 
     def fdr(self):
         """
@@ -356,11 +342,11 @@ class MultiTest(object):
             critical P-value
         """
 
-        vals = self._pvals / self._uu
+        vals = self._sorted_pvals / self._uu
         istar = np.argmin(vals)
-        return -np.log(vals[istar]), self._pvals[istar]
+        return -np.log(vals[istar]), self._sorted_pvals[istar]
 
-    def fdr_BH(self, fdr_param=0.05):
+    def fdr_control(self, fdr_param=0.1):
         """
         Binjimini-Hochberg FDR control
 
@@ -369,12 +355,12 @@ class MultiTest(object):
             samller in expectation than fdr_param
         """
 
-        vals = self._pvals / self._uu
-        indicator = vals < fdr_param / self._N # example 0 0 0 1 1 1 1 1 1
+        vals = self._sorted_pvals / self._uu
+        indicator = vals > fdr_param # example 0 0 0 1 1 1 1 1 1
         istar = np.argmax(indicator)-1           # first 1
         if istar < 0:
             return np.nan
-        return self._pvals[istar]
+        return self._sorted_pvals[istar]
 
     def fisher(self):
         """
@@ -391,6 +377,6 @@ class MultiTest(object):
             chi2_pval              P-value of the assocaited chi-squared test
         """
 
-        fisher_comb_stat = np.sum(-2 * np.log(self._pvals))
-        chi2_pval = chi2.sf(fisher_comb_stat, df=2 * len(self._pvals))
+        fisher_comb_stat = np.sum(-2 * np.log(self._sorted_pvals))
+        chi2_pval = chi2.sf(fisher_comb_stat, df=2 * len(self._sorted_pvals))
         return fisher_comb_stat, chi2_pval
