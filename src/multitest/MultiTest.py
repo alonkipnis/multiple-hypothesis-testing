@@ -161,7 +161,7 @@ class MultiTest(object):
     
     def berkjones_plus(self, gamma='auto'):
         """
-        Exact Berk-Jones statistic
+        Exact Berk-Jones statistic only lower-than-uniform P-values
 
         According to Moscovich, Nadler, Spiegelman. (2013). 
         On the exact Berk-Jones statistics and their p-value calculation

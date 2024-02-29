@@ -12,7 +12,6 @@ and weak differences in their means.
 
 GAMMA = 'auto'
 
-
 def sample_sparse_normals(r, n, be, sig):
     mu = np.sqrt(2 * r * np.log(n))
     ep = n ** -be

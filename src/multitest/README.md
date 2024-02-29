@@ -2,15 +2,13 @@
 
 MultiTest includes several techniques for multiple hypothesis testing:
 - ``MultiTest.hc`` Higher Criticism
-- ``MultiTest.hcstar`` Higher Criticism with limited range 
-- ``MultiTest.hc_jin`` Higher Criticism with limited range proposed by Jiashun Jin
-- ``MultiTest.berkjones`` Berk-Jones test (actually -log(bj)) 
-- ``MultiTest.fdr`` Maximal value of Benjamini-Hochberg's false-discovery rate functional
-- ``MultiTest.fdr_control`` Benjamini-Hochberg's false-discovery rate procedure
-- ``MultiTest.minp`` Minimal P-values (Bonferroni style inference) (actually -log(minp))
+- ``MultiTest.hcstar`` Higher Criticism with limited range proposed in [1]
+- ``MultiTest.hc_jin`` Higher Criticism with limited range proposed as proposed in [3]
+- ``MultiTest.berk_jones`` Berk-Jones statistic
+- ``MultiTest.fdr`` False-discovery rate with optimized rate parameter
+- ``MultiTest.minp`` Minimal P-value as in Bonferroni style inference
 - ``MultiTest.fisher`` Fisher's method to combine P-values
- 
-All tests reject for large values of the test statistics. 
+In all cases, one should reject the null for large values of the test statistic.
 
 ## Example:
 ```
@@ -18,19 +16,27 @@ import numpy as np
 from scipy.stats import norm
 from multitest import MultiTest
 
-p = 1000
-eps = .01
-mu = 2
-I = np.random.rand(p) < eps
-z = np.random.randn(p) * (1 - I) + I * (np.random.randn(p) + mu)
-pvals = 2*norm.cdf(-np.abs(z))
+p = 100
+z = np.random.randn(p)
+pvals = 2*norm.cdf(-np.abs(z)/2)
 
 mtest = MultiTest(pvals)
 
-f = mtest.fisher()
-hc = mtest.hc()
+hc, p_hct = mtest.hc(gamma = 0.3)
+bj = mtest.berk_jones()
 
-
-print(f"Fisher's comination statistic = {f[0]}, p-value = {f[1]}")
-print(f"Higher criticism statistic= {hc[0]}, Higher criticism threshold= {hc[1]}")
+ii = np.arange(len(pvals))
+print(f"HC = {hc}, Indices of P-values below HCT: {ii[pvals <= p_hct]}")
+print(f"Berk-Jones = {bj}")
 ```
+
+## Use cases: 
+This package was used to obtain evaluations reported in [5] and [6].
+
+## References:
+[1] Donoho, David. L. and Jin, Jiashun. "Higher criticism for detecting sparse hetrogenous mixtures." The Annals of Statistics 32, no. 3 (2004): 962-994.
+[2] Donoho, David L. and Jin, Jiashun. "Higher critcism thresholding: Optimal feature selection when useful features are rare and weak." proceedings of the national academy of sciences, 2008.
+[3] Jin, Jiashun, and Wanjie Wang. "Influential features PCA for high dimensional clustering." The Annals of Statistics 44, no. 6 (2016): 2323-2359.
+[4] Amit Moscovich, Boaz Nadler, and Clifford Spiegelman. "On the exact Berk-Jones statistics and their p-value calculation." Electronic Journal of Statistics. 10 (2016): 2329-2354.
+[5] Donoho, David L., and Alon Kipnis. "Higher criticism to compare two large frequency tables, with sensitivity to possible rare and weak differences." The Annals of Statistics 50, no. 3 (2022): 1447-1472.
+[6] Kipnis, Alon. "Unification of rare/weak detection models using moderate deviations analysis and log-chisquared p-values." Statistica Scinica 2025.
