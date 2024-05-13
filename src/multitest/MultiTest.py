@@ -324,6 +324,12 @@ class MultiTest(object):
                 'imin_jin': self._imin_jin,
                 }
 
+    def bonfferoni(self):
+        """
+        Bonferroni type inference
+        """
+        return self._pvals[0] * self._N
+
     def minp(self):
         """
         Bonferroni type inference
