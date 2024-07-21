@@ -49,12 +49,12 @@ class MultiTest(object):
         assert (self._N > 0)
 
         self._EPS = 1 / (1e4 + self._N ** 2)
-        self._istar = 1
+        self._istar = 0
 
         self._sorted_pvals = np.sort(np.asarray(pvals.copy()))  # sorted P-values
         self._uu = np.linspace(1 / self._N, 1, self._N)
         self._uu[-1] -= self._EPS # we assume that the largest P-value
-                                  # has no effect on the results
+                                  # does no effect the results
         if stbl:
             denom = np.sqrt(self._uu * (1 - self._uu))
         else:
