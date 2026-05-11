@@ -31,11 +31,11 @@ def test_sparse_normals(r, n, be, sig):
     pvals = 2*norm.cdf(- np.abs(Z))
     mt = MultiTest(pvals)
     fish = mt.fisher()
-    return {'hc' : mt.hc(GAMMA)[0],
-            'hcstar' : mt.hc_star(GAMMA)[0],
+    return {'hc' : mt.hc_beta(GAMMA),
+            'hcstar' : mt.hc_star(GAMMA),
             'berkjones' : mt.berkjones(gamma=GAMMA),
             'berkjones_plus': mt.berkjones_plus(gamma=GAMMA),
-            'bonf': mt.minp(),
+            'bonf': mt.neg_log_minp(),
             'fdr': mt.fdr()[0],
             'fisher': fish[0] / len(pvals)
             }
@@ -46,9 +46,9 @@ def test_feature_selection(r, n, be, sig):
     mt = MultiTest(pvals)
 
     alpha = 0.05
-    delta_HC = pvals <= mt.hc(GAMMA)[1] 
+    delta_HC = pvals <= mt.hc_beta(GAMMA, return_threshold=True)[1]
     delta_BJ = pvals <= mt.berkjones_threshold(gamma=GAMMA)
-    delta_BH = pvals <= mt.fdr_threshold(fdr_param=alpha)
+    delta_BH = pvals <= mt.fdr_control(fdr_param=alpha)
     delta_bonf = pvals <= alpha / n
     
     return {'delta_HC' : delta_HC,

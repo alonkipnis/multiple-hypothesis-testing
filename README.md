@@ -1,42 +1,82 @@
-# MultiTest -- Global Tests for Multiple Hypothesis
+# MultiTest — Global Tests for Multiple Hypothesis Testing
 
-MultiTest includes several techniques for multiple hypothesis testing:
-- ``MultiTest.hc`` Higher Criticism
-- ``MultiTest.hcstar`` Higher Criticism with limited range proposed in [1]
-- ``MultiTest.hc_jin`` Higher Criticism with limited range proposed as proposed in [3]
-- ``MultiTest.berk_jones`` Berk-Jones statistic
-- ``MultiTest.fdr`` False-discovery rate with optimized rate parameter
-- ``MultiTest.minp`` Minimal P-values as in Bonferroni style inference
-- ``MultiTest.fisher`` Fisher's method to combine P-values
-In all cases, one should reject the null for large values of the test statistic.
+MultiTest provides several methods for combining p-values with a focus on
+detecting rare and weak effects.
 
-## Example:
-```
+## Higher Criticism variants
+
+Each HC variant is exposed as its own method so that the standardization
+choice is explicit rather than a constructor argument.
+
+| Method | Standardization | P-value range considered |
+|---|---|---|
+| `MultiTest.hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | all p-values |
+| `MultiTest.hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | all p-values |
+| `MultiTest.hc_beta`   | Beta-distribution std (recommended default) | all p-values |
+| `MultiTest.hc_star`   | Beta-distribution std | p-values > 1/n (HCdagger [1]) |
+
+Every HC method accepts:
+- `gamma` – upper fraction of sorted p-values to consider (default `'auto'`).
+- `return_threshold` – if `True`, returns `(hc_score, threshold_pval)`;
+  otherwise returns just the score (default `False`).
+
+## Other methods
+
+- `MultiTest.berkjones` / `berkjones_plus` – Berk-Jones statistic [3]
+- `MultiTest.fdr` – False-discovery rate functional
+- `MultiTest.fdr_control` – Benjamini-Hochberg FDR control
+- `MultiTest.bonferroni` / `neg_log_minp` – Bonferroni-style inference
+- `MultiTest.fisher` – Fisher's method to combine p-values
+
+In all cases, reject the null for large values of the test statistic.
+
+## Quick start
+
+```python
 import numpy as np
 from scipy.stats import norm
 from multitest import MultiTest
 
-p = 100
-z = np.random.randn(p)
-pvals = 2*norm.cdf(-np.abs(z)/2)
+n = 100
+z = np.random.randn(n)
+pvals = 2 * norm.cdf(-np.abs(z))
 
-mtest = MultiTest(pvals)
+mt = MultiTest(pvals)
 
-hc, p_hct = mtest.hc(gamma = 0.3)
-bj = mtest.berk_jones()
+# HC score only (default)
+hc = mt.hc_beta(gamma=0.3)
 
-ii = np.arange(len(pvals))
-print(f"HC = {hc}, Indices of P-values below HCT: {ii[pvals <= p_hct]}")
-print(f"Berk-Jones = {bj}")
+# HC score + threshold p-value
+hc, hct = mt.hc_beta(gamma=0.3, return_threshold=True)
+
+# Berk-Jones
+bj = mt.berkjones()
+
+ii = np.arange(n)
+print(f"HC = {hc:.3f}, features below HCT: {ii[pvals <= hct]}")
+print(f"Berk-Jones = {bj:.3f}")
 ```
 
-## Use cases: 
+## Choosing an HC variant
+
+- **`hc_beta`** is the recommended default. Its z-scores are standardized using
+  the exact mean and variance of the beta distribution of order statistics,
+  giving a well-calibrated null distribution.
+- **`hc_dj2008`** is nearly identical to `hc_beta` for large n and matches the
+  formulation in [2].
+- **`hc_dj2004`** uses the *observed* p-value standard deviation as denominator.
+  This makes it more sensitive to extreme p-values but also increases variance
+  under the null.
+- **`hc_star`** ignores p-values below 1/n (sample-size adjusted, HCdagger [1]).
+
+## Use cases
+
 This package was used to obtain evaluations reported in [5] and [6].
 
-## References:
-[1] Donoho, David. L. and Jin, Jiashun. "Higher criticism for detecting sparse hetrogenous mixtures." The Annals of Statistics 32, no. 3 (2004): 962-994.
-[2] Donoho, David L. and Jin, Jiashun. "Higher critcism thresholding: Optimal feature selection when useful features are rare and weak." proceedings of the national academy of sciences, 2008.
-[3] Jin, Jiashun, and Wanjie Wang. "Influential features PCA for high dimensional clustering." The Annals of Statistics 44, no. 6 (2016): 2323-2359.
-[4] Amit Moscovich, Boaz Nadler, and Clifford Spiegelman. "On the exact Berk-Jones statistics and their p-value calculation." Electronic Journal of Statistics. 10 (2016): 2329-2354.
-[5] Donoho, David L., and Alon Kipnis. "Higher criticism to compare two large frequency tables, with sensitivity to possible rare and weak differences." The Annals of Statistics 50, no. 3 (2022): 1447-1472.
-[6] Kipnis, Alon. "Unification of rare/weak detection models using moderate deviations analysis and log-chisquared p-values." Statistica Scinica 2025.
+## References
+
+[1] Donoho, David L. and Jin, Jiashun. "Higher criticism for detecting sparse heterogeneous mixtures." *The Annals of Statistics* 32, no. 3 (2004): 962-994.  
+[2] Donoho, David L. and Jin, Jiashun. "Higher criticism thresholding: Optimal feature selection when useful features are rare and weak." *Proceedings of the National Academy of Sciences*, 2008.  
+[3] Moscovich, Amit, Boaz Nadler, and Clifford Spiegelman. "On the exact Berk-Jones statistics and their p-value calculation." *Electronic Journal of Statistics* 10 (2016): 2329-2354.  
+[4] Donoho, David L. and Alon Kipnis. "Higher criticism to compare two large frequency tables, with sensitivity to possible rare and weak differences." *The Annals of Statistics* 50, no. 3 (2022): 1447-1472.  
+[5] Kipnis, Alon. "Unification of rare/weak detection models using moderate deviations analysis and log-chisquared p-values." *Statistica Sinica*, 2025.

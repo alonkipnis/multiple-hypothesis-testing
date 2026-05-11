@@ -32,7 +32,7 @@ def test_feature_selection(r, n, be, sig):
     pvals = 2*norm.cdf(- np.abs(Z))
     mt = MultiTest(pvals)
 
-    delta_HC = pvals <= mt.hc(GAMMA)[1] 
+    delta_HC = pvals <= mt.hc_beta(GAMMA, return_threshold=True)[1] 
     delta_BJ = pvals <= mt.berkjones_threshold(gamma=GAMMA)
     delta_BH = pvals <= mt.fdr()[1]
     delta_FDR = pvals <= mt.fdr_control(fdr_param=2 * ALPHA)

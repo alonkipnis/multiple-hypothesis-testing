@@ -1,42 +1,65 @@
-# MultiTest -- Global Tests for Multiple Hypothesis
+# MultiTest — Global Tests for Multiple Hypothesis Testing
 
-MultiTest includes several techniques for multiple hypothesis testing:
-- ``MultiTest.hc`` Higher Criticism
-- ``MultiTest.hcstar`` Higher Criticism with limited range proposed in [1]
-- ``MultiTest.hc_jin`` Higher Criticism with limited range proposed as proposed in [3]
-- ``MultiTest.berk_jones`` Berk-Jones statistic
-- ``MultiTest.fdr`` False-discovery rate with optimized rate parameter
-- ``MultiTest.minp`` Minimal P-value as in Bonferroni style inference
-- ``MultiTest.fisher`` Fisher's method to combine P-values
-In all cases, one should reject the null for large values of the test statistic.
+MultiTest provides several methods for combining p-values with a focus on
+detecting rare and weak effects.
 
-## Example:
+## Higher Criticism variants
+
+Each HC variant is its own method; the standardization is encoded in the
+method name rather than passed as a constructor argument.
+
+| Method | Standardization | P-value range |
+|---|---|---|
+| `hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | all |
+| `hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | all |
+| `hc_beta`   | Beta-distribution std (recommended default) | all |
+| `hc_star`   | Beta-distribution std | > 1/n (HCdagger [1]) |
+
+All HC methods share the same signature:
+
+```python
+hc_*(gamma='auto', return_threshold=False)
 ```
+
+- `gamma` – upper fraction of sorted p-values to consider.
+- `return_threshold` – set to `True` to obtain `(hc_score, threshold_pval)`.
+
+## Other methods
+
+- `berkjones` / `berkjones_plus` – Berk-Jones statistic [4]
+- `fdr` – False-discovery rate functional
+- `fdr_control` – Benjamini-Hochberg FDR control
+- `bonferroni` / `neg_log_minp` – Bonferroni-style inference
+- `fisher` – Fisher's method
+
+## Example
+
+```python
 import numpy as np
 from scipy.stats import norm
 from multitest import MultiTest
 
-p = 100
-z = np.random.randn(p)
-pvals = 2*norm.cdf(-np.abs(z)/2)
+n = 100
+z = np.random.randn(n)
+pvals = 2 * norm.cdf(-np.abs(z))
 
-mtest = MultiTest(pvals)
+mt = MultiTest(pvals)
 
-hc, p_hct = mtest.hc(gamma = 0.3)
-bj = mtest.berk_jones()
+# HC score only
+hc = mt.hc_beta(gamma=0.3)
 
-ii = np.arange(len(pvals))
-print(f"HC = {hc}, Indices of P-values below HCT: {ii[pvals <= p_hct]}")
-print(f"Berk-Jones = {bj}")
+# HC score + p-value threshold
+hc, hct = mt.hc_beta(gamma=0.3, return_threshold=True)
+
+ii = np.arange(n)
+print(f"HC = {hc:.3f}")
+print(f"Features below HC threshold: {ii[pvals <= hct]}")
 ```
 
-## Use cases: 
-This package was used to obtain evaluations reported in [5] and [6].
+## References
 
-## References:
-[1] Donoho, David. L. and Jin, Jiashun. "Higher criticism for detecting sparse hetrogenous mixtures." The Annals of Statistics 32, no. 3 (2004): 962-994.
-[2] Donoho, David L. and Jin, Jiashun. "Higher critcism thresholding: Optimal feature selection when useful features are rare and weak." proceedings of the national academy of sciences, 2008.
-[3] Jin, Jiashun, and Wanjie Wang. "Influential features PCA for high dimensional clustering." The Annals of Statistics 44, no. 6 (2016): 2323-2359.
-[4] Amit Moscovich, Boaz Nadler, and Clifford Spiegelman. "On the exact Berk-Jones statistics and their p-value calculation." Electronic Journal of Statistics. 10 (2016): 2329-2354.
-[5] Donoho, David L., and Alon Kipnis. "Higher criticism to compare two large frequency tables, with sensitivity to possible rare and weak differences." The Annals of Statistics 50, no. 3 (2022): 1447-1472.
-[6] Kipnis, Alon. "Unification of rare/weak detection models using moderate deviations analysis and log-chisquared p-values." Statistica Scinica 2025.
+[1] Donoho, David L. and Jin, Jiashun. "Higher criticism for detecting sparse heterogeneous mixtures." *The Annals of Statistics* 32, no. 3 (2004): 962-994.  
+[2] Donoho, David L. and Jin, Jiashun. "Higher criticism thresholding: Optimal feature selection when useful features are rare and weak." *PNAS*, 2008.  
+[3] Moscovich, Amit, Boaz Nadler, and Clifford Spiegelman. "On the exact Berk-Jones statistics and their p-value calculation." *Electronic Journal of Statistics* 10 (2016): 2329-2354.  
+[4] Donoho, David L. and Alon Kipnis. "Higher criticism to compare two large frequency tables, with sensitivity to possible rare and weak differences." *The Annals of Statistics* 50, no. 3 (2022): 1447-1472.  
+[5] Kipnis, Alon. "Unification of rare/weak detection models using moderate deviations analysis and log-chisquared p-values." *Statistica Sinica*, 2025.

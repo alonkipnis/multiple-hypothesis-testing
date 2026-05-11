@@ -27,6 +27,6 @@ Z = (Z1 - Z2)/np.sqrt(2)
 pvals = 2*norm.cdf(- np.abs(Z))
 
 mt = MultiTest(pvals)
-hc, hct = mt.hc()
+hc, hct = mt.hc_beta(return_threshold=True)
 
 mt.hc_dashboard(gamma=.3)
