@@ -10,15 +10,31 @@ choice is explicit rather than a constructor argument.
 
 | Method | Standardization | P-value range considered |
 |---|---|---|
-| `MultiTest.hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | all p-values |
-| `MultiTest.hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | all p-values |
-| `MultiTest.hc_beta`   | Beta-distribution std (recommended default) | all p-values |
-| `MultiTest.hc_star`   | Beta-distribution std | p-values > 1/n (HCdagger [1]) |
+| `MultiTest.hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (1/n, γ] |
+| `MultiTest.hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | (0, γ] |
+| `MultiTest.hc_beta`   | Beta-distribution std (recommended default) | (0, γ] |
+| `MultiTest.hc_star`   | Beta-distribution std | (1/n, γ] (HCdagger [1]) |
 
 Every HC method accepts:
-- `gamma` – upper fraction of sorted p-values to consider (default `'auto'`).
+- `gamma` – upper fraction of sorted p-values to consider. Only the
+  p-values ranked in positions 1 through ⌊γ·n⌋ (i.e. the smallest γ
+  fraction) enter the HC statistic. Defaults to `'auto'` (see below).
 - `return_threshold` – if `True`, returns `(hc_score, threshold_pval)`;
   otherwise returns just the score (default `False`).
+
+### Default `gamma` and why it matters
+
+When `gamma='auto'` the upper limit is set to
+
+```
+γ = log(n) / sqrt(n)
+```
+
+This keeps HC focused on the regime where it has the most power. Signals
+denser than roughly 1/√n features are detectable by simpler methods (e.g.
+the average z-score), so extending HC beyond γ = log(n)/√n adds noise
+without gaining power. The log(n) factor provides a small safety margin
+above the 1/√n threshold.
 
 ## Other methods
 

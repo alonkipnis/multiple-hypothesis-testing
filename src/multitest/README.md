@@ -10,10 +10,10 @@ method name rather than passed as a constructor argument.
 
 | Method | Standardization | P-value range |
 |---|---|---|
-| `hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | all |
-| `hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | all |
-| `hc_beta`   | Beta-distribution std (recommended default) | all |
-| `hc_star`   | Beta-distribution std | > 1/n (HCdagger [1]) |
+| `hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (1/n, γ] |
+| `hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | (0, γ] |
+| `hc_beta`   | Beta-distribution std (recommended default) | (0, γ] |
+| `hc_star`   | Beta-distribution std | (1/n, γ] (HCdagger [1]) |
 
 All HC methods share the same signature:
 
@@ -21,7 +21,11 @@ All HC methods share the same signature:
 hc_*(gamma='auto', return_threshold=False)
 ```
 
-- `gamma` – upper fraction of sorted p-values to consider.
+- `gamma` – upper fraction of sorted p-values to consider. Only p-values
+  ranked in positions 1 through ⌊γ·n⌋ enter the statistic.
+  When `gamma='auto'` the value `log(n)/sqrt(n)` is used: this focuses HC
+  on the sparse-signal regime where it has the most power, since signals
+  denser than ~1/√n are better handled by simpler tests.
 - `return_threshold` – set to `True` to obtain `(hc_score, threshold_pval)`.
 
 ## Other methods
