@@ -10,9 +10,10 @@ method name rather than passed as a constructor argument.
 
 | Method | Standardization | P-value range |
 |---|---|---|
-| `hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (1/n, γ] |
+| `hc`        | Donoho-Jin 2008 [2] – theoretical uniform std (default) | (0, γ] |
+| `hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (0, γ] |
 | `hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | (0, γ] |
-| `hc_beta`   | Beta-distribution std (recommended default) | (0, γ] |
+| `hc_beta`   | Beta-distribution std | (0, γ] |
 | `hc_star`   | Beta-distribution std | (1/n, γ] (HCdagger [1]) |
 
 All HC methods share the same signature:
@@ -30,7 +31,7 @@ hc_*(gamma='auto', return_threshold=False)
 
 ## Other methods
 
-- `berkjones` / `berkjones_plus` – Berk-Jones statistic [4]
+- `berkjones` / `berkjones_plus` – Berk-Jones statistic [3]
 - `fdr` – False-discovery rate functional
 - `fdr_control` – Benjamini-Hochberg FDR control
 - `bonferroni` / `neg_log_minp` – Bonferroni-style inference
@@ -49,11 +50,11 @@ pvals = 2 * norm.cdf(-np.abs(z))
 
 mt = MultiTest(pvals)
 
-# HC score only
-hc = mt.hc_beta(gamma=0.3)
+# Default HC score
+hc = mt.hc()
 
 # HC score + p-value threshold
-hc, hct = mt.hc_beta(gamma=0.3, return_threshold=True)
+hc, hct = mt.hc(return_threshold=True)
 
 ii = np.arange(n)
 print(f"HC = {hc:.3f}")

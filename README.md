@@ -10,9 +10,10 @@ choice is explicit rather than a constructor argument.
 
 | Method | Standardization | P-value range considered |
 |---|---|---|
-| `MultiTest.hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (1/n, γ] |
+| `MultiTest.hc`        | Donoho-Jin 2008 [2] – theoretical uniform std (default) | (0, γ] |
+| `MultiTest.hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (0, γ] |
 | `MultiTest.hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | (0, γ] |
-| `MultiTest.hc_beta`   | Beta-distribution std (recommended default) | (0, γ] |
+| `MultiTest.hc_beta`   | Beta-distribution std | (0, γ] |
 | `MultiTest.hc_star`   | Beta-distribution std | (1/n, γ] (HCdagger [1]) |
 
 Every HC method accepts:
@@ -59,11 +60,11 @@ pvals = 2 * norm.cdf(-np.abs(z))
 
 mt = MultiTest(pvals)
 
-# HC score only (default)
-hc = mt.hc_beta(gamma=0.3)
+# Default HC score
+hc = mt.hc()
 
 # HC score + threshold p-value
-hc, hct = mt.hc_beta(gamma=0.3, return_threshold=True)
+hc, hct = mt.hc(return_threshold=True)
 
 # Berk-Jones
 bj = mt.berkjones()
@@ -75,11 +76,12 @@ print(f"Berk-Jones = {bj:.3f}")
 
 ## Choosing an HC variant
 
-- **`hc_beta`** is the recommended default. Its z-scores are standardized using
-  the exact mean and variance of the beta distribution of order statistics,
-  giving a well-calibrated null distribution.
-- **`hc_dj2008`** is nearly identical to `hc_beta` for large n and matches the
-  formulation in [2].
+- **`hc`** is the recommended starting point. It is an alias for `hc_dj2008`
+  with the default `gamma` setting.
+- **`hc_dj2008`** uses the expected (theoretical) uniform mean and std for
+  normalization, matching the formulation in [2].
+- **`hc_beta`** is nearly identical to `hc_dj2008` for large n but uses the
+  exact beta-distribution moments of order statistics.
 - **`hc_dj2004`** uses the *observed* p-value standard deviation as denominator.
   This makes it more sensitive to extreme p-values but also increases variance
   under the null.
@@ -87,7 +89,7 @@ print(f"Berk-Jones = {bj:.3f}")
 
 ## Use cases
 
-This package was used to obtain evaluations reported in [5] and [6].
+This package was used to obtain evaluations reported in [4] and [5].
 
 ## References
 

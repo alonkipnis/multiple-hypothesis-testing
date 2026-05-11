@@ -1,5 +1,5 @@
 """
-Tests for the four Higher Criticism variants in MultiTest.
+Tests for the five Higher Criticism methods in MultiTest.
 
 Test groups
 -----------
@@ -10,6 +10,7 @@ TestNullBehavior        – under H0 (uniform p-values), all HC statistics are p
 TestAlternativeDetection – under a sparse-normal H1 all variants detect the signal
 TestRangeRestriction    – hc_star correctly excludes p-values below 1/n
 TestStandardizations    – three standardization choices give distinct scores
+TestDefaultAlias        – hc() is an exact alias for hc_dj2008()
 """
 
 import pytest
@@ -19,7 +20,7 @@ from src.multitest import MultiTest
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-HC_METHODS = ["hc_dj2004", "hc_dj2008", "hc_beta", "hc_star"]
+HC_METHODS = ["hc", "hc_dj2004", "hc_dj2008", "hc_beta", "hc_star"]
 
 def _run_hc(mt: MultiTest, name: str, **kw):
     return getattr(mt, name)(**kw)
@@ -141,11 +142,11 @@ class TestNullBehavior:
 
     def test_stable_variants_have_similar_medians(self, null_stats):
         """
-        hc_dj2008, hc_beta, and hc_star all use expected (theoretical) standard
+        hc, hc_dj2008, hc_beta, and hc_star all use expected (theoretical) standard
         deviations for normalization, so their null medians should agree within
         a factor of 2.
         """
-        stable = ["hc_dj2008", "hc_beta", "hc_star"]
+        stable = ["hc", "hc_dj2008", "hc_beta", "hc_star"]
         medians = {name: np.median(null_stats[name]) for name in stable}
         ratio = max(medians.values()) / min(medians.values())
         assert ratio < 2.0, (
@@ -280,3 +281,34 @@ class TestStandardizations:
         assert abs(mt.hc_dj2008() - mt.hc_beta()) < 0.1, (
             "hc_dj2008 and hc_beta should nearly agree for very large n"
         )
+
+
+# ── default alias tests ───────────────────────────────────────────────────────
+
+class TestDefaultAlias:
+    """hc() is an exact alias for hc_dj2008() and must behave identically."""
+
+    @pytest.fixture(scope="class")
+    def mt(self):
+        rng = np.random.default_rng(77)
+        return MultiTest(rng.uniform(size=400))
+
+    def test_hc_score_equals_hc_dj2008(self, mt):
+        assert np.isclose(mt.hc(), mt.hc_dj2008()), (
+            "hc() score should equal hc_dj2008() score"
+        )
+
+    def test_hc_threshold_equals_hc_dj2008_threshold(self, mt):
+        hc_score, hc_thr = mt.hc(return_threshold=True)
+        dj_score, dj_thr = mt.hc_dj2008(return_threshold=True)
+        assert np.isclose(hc_score, dj_score)
+        assert np.isclose(hc_thr, dj_thr), (
+            "hc() threshold should equal hc_dj2008() threshold"
+        )
+
+    def test_hc_respects_gamma(self, mt):
+        """Passing an explicit gamma to hc() should propagate correctly."""
+        for g in [0.1, 0.3, 0.5]:
+            assert np.isclose(mt.hc(gamma=g), mt.hc_dj2008(gamma=g)), (
+                f"hc(gamma={g}) != hc_dj2008(gamma={g})"
+            )

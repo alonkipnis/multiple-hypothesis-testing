@@ -34,6 +34,7 @@ feature selection when useful features are rare and weak", proceedings
 
     Methods:
     -------
+        hc          Default HC (alias for hc_dj2008)
         hc_dj2004   HC with Donoho-Jin 2004 standardization [1]
         hc_dj2008   HC with Donoho-Jin 2008 standardization [2]
         hc_star     HC variant only considering P-values > 1/n (HCdagger in [1])
@@ -55,6 +56,21 @@ feature selection when useful features are rare and weak", proceedings
 
         self._gamma = np.log(self._N) / np.sqrt(self._N)  
         # The rationale is particularly useful for detecting effect much rarer thatn sqrt{n} of the number of features. This upper truncation was not published, but seems to provide good results. 
+
+    def hc(self, gamma='auto', return_threshold=False):
+        """
+        Default Higher Criticism (alias for hc_dj2008).
+
+        Args:
+        -----
+        gamma             upper fraction of P-values to consider (default: log(n)/sqrt(n))
+        return_threshold  if True, also return the P-value attaining HC
+
+        Return:
+        -------
+        HC score (and P-value attaining it if return_threshold=True)
+        """
+        return self.hc_dj2008(gamma=gamma, return_threshold=return_threshold)
 
 
     def _get_zscores(self, standardization):
