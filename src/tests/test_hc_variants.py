@@ -142,11 +142,12 @@ class TestNullBehavior:
 
     def test_stable_variants_have_similar_medians(self, null_stats):
         """
-        hc, hc_dj2008, hc_beta, and hc_star all use expected (theoretical) standard
+        hc_dj2008, hc_beta, and hc_star all use expected (theoretical) standard
         deviations for normalization, so their null medians should agree within
-        a factor of 2.
+        a factor of 2. hc is identical to hc_star so it is excluded to avoid
+        double-counting.
         """
-        stable = ["hc", "hc_dj2008", "hc_beta", "hc_star"]
+        stable = ["hc_dj2008", "hc_beta", "hc_star"]
         medians = {name: np.median(null_stats[name]) for name in stable}
         ratio = max(medians.values()) / min(medians.values())
         assert ratio < 2.0, (
@@ -286,29 +287,29 @@ class TestStandardizations:
 # ── default alias tests ───────────────────────────────────────────────────────
 
 class TestDefaultAlias:
-    """hc() is an exact alias for hc_dj2008() and must behave identically."""
+    """hc() is an exact alias for hc_star() and must behave identically."""
 
     @pytest.fixture(scope="class")
     def mt(self):
         rng = np.random.default_rng(77)
         return MultiTest(rng.uniform(size=400))
 
-    def test_hc_score_equals_hc_dj2008(self, mt):
-        assert np.isclose(mt.hc(), mt.hc_dj2008()), (
-            "hc() score should equal hc_dj2008() score"
+    def test_hc_score_equals_hc_star(self, mt):
+        assert np.isclose(mt.hc(), mt.hc_star()), (
+            "hc() score should equal hc_star() score"
         )
 
-    def test_hc_threshold_equals_hc_dj2008_threshold(self, mt):
+    def test_hc_threshold_equals_hc_star_threshold(self, mt):
         hc_score, hc_thr = mt.hc(return_threshold=True)
-        dj_score, dj_thr = mt.hc_dj2008(return_threshold=True)
-        assert np.isclose(hc_score, dj_score)
-        assert np.isclose(hc_thr, dj_thr), (
-            "hc() threshold should equal hc_dj2008() threshold"
+        star_score, star_thr = mt.hc_star(return_threshold=True)
+        assert np.isclose(hc_score, star_score)
+        assert np.isclose(hc_thr, star_thr), (
+            "hc() threshold should equal hc_star() threshold"
         )
 
     def test_hc_respects_gamma(self, mt):
         """Passing an explicit gamma to hc() should propagate correctly."""
         for g in [0.1, 0.3, 0.5]:
-            assert np.isclose(mt.hc(gamma=g), mt.hc_dj2008(gamma=g)), (
-                f"hc(gamma={g}) != hc_dj2008(gamma={g})"
+            assert np.isclose(mt.hc(gamma=g), mt.hc_star(gamma=g)), (
+                f"hc(gamma={g}) != hc_star(gamma={g})"
             )

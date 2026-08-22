@@ -34,7 +34,7 @@ feature selection when useful features are rare and weak", proceedings
 
     Methods:
     -------
-        hc          Default HC (alias for hc_dj2008)
+        hc          Default HC (alias for hc_star)
         hc_dj2004   HC with Donoho-Jin 2004 standardization [1]
         hc_dj2008   HC with Donoho-Jin 2008 standardization [2]
         hc_star     HC variant only considering P-values > 1/n (HCdagger in [1])
@@ -59,7 +59,10 @@ feature selection when useful features are rare and weak", proceedings
 
     def hc(self, gamma='auto', return_threshold=False):
         """
-        Default Higher Criticism (alias for hc_dj2008).
+        Default Higher Criticism (alias for hc_star).
+
+        Only considers P-values larger than 1/n (HCdagger from [1]), using
+        beta-distribution standardization.
 
         Args:
         -----
@@ -70,7 +73,7 @@ feature selection when useful features are rare and weak", proceedings
         -------
         HC score (and P-value attaining it if return_threshold=True)
         """
-        return self.hc_dj2008(gamma=gamma, return_threshold=return_threshold)
+        return self.hc_star(gamma=gamma, return_threshold=return_threshold)
 
 
     def _get_zscores(self, standardization):
@@ -90,10 +93,11 @@ feature selection when useful features are rare and weak", proceedings
             uu = np.linspace(1 / N, 1, N)
             uu[-1] -= self._EPS
             std = np.sqrt(spv * (1 - spv) / N)
-        else:  # 'beta-std'
+        else:  # 'Beta(i, N + 1 - i) mean and std'
+            # Var(i) =  i (N + 1 - i)  /  ( (N+1)^2 * (N+2) )
+            # Mean(i) = i / (N + 1)
             uu = np.linspace(1 / (N + 1), 1 - 1 / (N + 1), N)
             std = np.sqrt(uu * (1 - uu) / (N + 2))
-
         return uu, (uu - spv) / std
 
     def _evaluate_hc(self, zz, imin, imax, return_threshold=False):

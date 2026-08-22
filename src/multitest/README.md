@@ -10,7 +10,7 @@ method name rather than passed as a constructor argument.
 
 | Method | Standardization | P-value range |
 |---|---|---|
-| `hc`        | Donoho-Jin 2008 [2] – theoretical uniform std (default) | (0, γ] |
+| `hc`        | Beta-distribution std (default, alias for hc_star) | (1/n, γ] |
 | `hc_dj2004` | Donoho-Jin 2004 [1] – observed p-value std | (0, γ] |
 | `hc_dj2008` | Donoho-Jin 2008 [2] – theoretical uniform std | (0, γ] |
 | `hc_beta`   | Beta-distribution std | (0, γ] |
