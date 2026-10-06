@@ -47,7 +47,7 @@ feature selection when useful features are rare and weak", proceedings
         self._N = len(pvals)
         assert (self._N > 0)
 
-        self._EPS = 1 / (1e4 + self._N ** 2)
+        self._EPS = 1 / (1e8 + self._N ** 2)
         self._istar = 0
 
         self._sorted_pvals = np.sort(np.asarray(pvals.copy()))
